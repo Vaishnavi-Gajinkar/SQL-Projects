@@ -1,0 +1,156 @@
+create a new db under Databases folder in pgAdmin
+import your excel files using restore feature upon rightclicking on new dB created
+select the .sql file in Filename section
+
+Question Set 1
+
+Data Analyst Portfolio Project - Music Store Data Analysis Project using SQL
+Question Set 1 - Easy
+Q1: Who is the senior most employee based on job title?
+Q2: Which countries have the most Invoices?
+Q3: What are top 3 values of total invoice
+Q4: Which city has the best customers? We would like to throw a promotional Music Festival in the city we made the most money. Write a query that returns one city that has the highest sum of invoice totals. Return both the city name & sum of all invoice totals
+Q5: Who is the best customer? The customer who has spent the most money will be declared the best customer. Write a query that returns the person who has spent the most money.
+
+Question Set 2 - Moderate
+Q1: Write query to return the email, first name, last name, & Genre of all Rock Music listeners. Return your list ordered alphabetically by email starting with A
+Q2: Let's invite the artists who have written the most rock music in our dataset. Write a query that returns the Artist name and total track count of the top 10 rock bands
+Q3: Return all the track names that have a song length longer than the average song length. Return the Name and milliseconds of each track. Order by the song length with the longest songs listed first.
+
+Question Set 3 - Advance
+Q1: Find how much amount spent by each customer on artists? Write a query to return customer name, artist name and total spent
+Q2: We want to find out the most popular music Genre for each country. We determine the most popular genre as the genre with the highest amount of purchases. Write a query that returns each country along with the top Genre. For countries where the maximum number of purchases is shared return all Genres.
+Q3: Write a query that determines the customer that has spent the most on music for each country. Write a query that returns the country along with the top customer and how much they spent. For countries where the top amount spent is shared, provide all customers who spent this amount
+
+
+
+
+
+Question Set 1 - EASY 
+
+Q1: Who is the senior most employee based on job title?
+
+SELECT * FROM employee ORDER BY levels desc top(2);
+
+ALTER TABLE dbo.employee alter column levels int;
+
+
+Q2: Which countries have the most Invoices?
+
+SELECT DISTINCT billing_city from invoice
+SELECT billing_country as Country, COUNT(*) AS Invoice_count
+FROM invoice
+GROUP BY billing_country
+ORDER BY Invoice_count desc
+
+
+Q3: What are top 3 values of total invoice
+
+SELECT TOP 3 * FROM invoice ORDER BY total DESC
+
+
+Q4: Which city has the best customers? We would like to throw a promotional Music Festival in the city we made the most money. 
+Write a query that returns one city that has the highest sum of invoice totals. 
+Return both the city name & sum of all invoice totals
+
+SELECT TOP 1 billing_city as CITY, SUM(total) AS revenue FROM invoice 
+GROUP BY billing_city
+order by revenue DESC
+
+Q5: Who is the best customer? The customer who has spent the most money will be declared the best customer. 
+Write a query that returns the person who has spent the most money
+
+select customer_id, sum(total) as total from invoice group by customer_id order by total desc;
+select * from customer 
+Select c.first_name, c.last_name, c.customer_id, a.total_spent 
+from (select top 1 customer.customer_id AS cci, SUM(invoice.total) AS total_spent
+FROM customer JOIN invoice
+ON customer.customer_id = invoice.customer_id
+GROUP BY customer.customer_id
+ORDER BY total_spent desc) AS A
+JOIN customer as C ON A.cci = C.customer_id
+ORDER BY total_spent desc
+
+
+Question Set 2 - Moderate
+Q1: Write query to return the email, first name, last name, & Genre of all Rock Music listeners. 
+Return your list ordered alphabetically by email starting with A
+
+select distinct c.email, c.first_name, c.last_name
+from customer c JOIN invoice i ON c.customer_id=i.Customer_Id
+JOIN invoice_line il ON il.invoice_id = i.invoice_id
+JOIN track t ON t.track_id = il.track_id
+JOIN genre g ON g.genre_id = t.genre_id
+Where g.name = 'Rock'
+ORDER BY c.email ASC
+
+OR
+
+select distinct email, first_name, last_name
+from customer JOIN invoice ON customer.customer_id=invoice.Customer_Id
+JOIN invoice_line ON invoice_line.invoice_id = invoice.invoice_id
+where track_id IN (
+	select track_id from track
+	JOIN genre ON genre.genre_id = track.genre_id
+	Where genre.name LIKE 'Rock')
+ORDER BY email
+
+
+Q2: Let's invite the artists who have written the most rock music in our dataset. 
+Write a query that returns the Artist name and total track count of the top 10 rock bands
+
+SELECT artist.name, COUNT(artist.artist_id) as Songs_Count
+FROM artist JOIN album ON artist.artist_id = album.artist_id
+JOIN track ON album.album_id = track.album_id
+JOIN genre ON genre.genre_id = track.genre_id
+WHERE genre.name LIKE 'Rock'
+GROUP BY artist.name
+ORDER BY Songs_Count desc
+
+Q3: Return all the track names that have a song length longer than the average song length. 
+Return the Name and milliseconds of each track. 
+Order by the song length with the longest songs listed first.
+
+SELECT name, milliseconds AS length_in_ms
+FROM track
+WHERE milliseconds > (Select AVG(milliseconds) FROM track)
+ORDER BY length_in_ms desc
+
+
+
+Question Set 3 - Advance
+Q1: Find how much amount spent by each customer on artists? ic
+Write a query to return customer name, artist name and total spent
+
+SELECT customer_name, artist_name, money_spent
+FROM customer JOIN invoice ON customer.customer_id = invoice.customer_id
+JOIN invoice_line ON invoice.invoice_id = invoice_line.invoice_id
+JOIN track ON invoice_line.track_id = track.track_id
+
+
+with best_artist_cte AS(
+	select TOP 1 artist.artist_id, SUM(invoice_line.unit_price*invoice_line.quantity) AS amount
+	FROM artist JOIN album ON artist.artist_id = album.artist_id
+	JOIN track ON album.album_id = track.album_id
+	JOIN invoice_line ON invoice_line.track_id = track.track_id
+	GROUP BY artist.artist_id 
+	--HAVING MAX(invoice_line.unit_price*invoice_line.quantity) 
+	ORDER BY amount desc
+)
+SELECT bsa.artist_id, SUM(il.unit_price*il.quantity) AS spent
+FROM customer c JOIN invoice i ON c.customer_id = i.customer_id
+JOIN invoice_line il ON i.invoice_id = il.invoice_id
+JOIN track t ON il.track_id = t.track_id
+JOIN album alb ON alb.album_id = t.album_id
+JOIN artist art ON alb.artist_id = art.artist_id
+JOIN best_artist_cte bsa ON alb.artist_id = bsa.artist_id
+GROUP BY bsa.artist_id
+ORDER BY spent desc
+
+
+
+
+
+
+
+
